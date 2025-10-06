@@ -7,13 +7,16 @@
 class HammingCode():
     def __init__(self, word, guess, is_even_parity=True):  # ask why I always need to define my inputs using self inside __init__
         self.word_len = len(word)
-        self.word = word
+        self.original_word = word
+        self.reverse_original_word = self.original_word[::-1]  # reverse word so that traversal can be easier
         self.guess = guess
         self.is_even_parity = is_even_parity  # i notied I dont need as much inputs to my fuction when using classes cause of globalness of variables
-        self.num_of_parity_bits = None
-        self.num_of_data_bits = None
-        self.parity_bits_mappings = None
+        self.num_of_parity_bits = None  # number of redundant/parity bits
+        self.num_of_data_bits = None  # number of actual data bits
+        self.original_parity_mapping = {}  # map parity positions to the bits in the word
+        self.correct_parity_mapping = {}  # parity positions to the actual correct bits
         self.parity_check_pos = None
+        self.correct_word = None
 
     def how_many_parity_bits(self):
         for p in range(self.guess):
@@ -28,7 +31,7 @@ class HammingCode():
 
     def get_bit_to_check(self):
         all_positions = [bin(i + 1) for i in range(self.word_len)]
-        parity_positions = [bin(p) for p in self.parity_bits_mappings]
+        parity_positions = [bin(p) for p in self.original_parity_mapping]
         positions = {int(p, 2): [] for p in parity_positions}
         for p_pos in parity_positions:
             binary_p_pos = p_pos.split('b')[1]
@@ -39,21 +42,55 @@ class HammingCode():
         self.parity_check_pos = positions
 
     def check_bits(self):
-        if self.is_even_parity:
-            ...
+        for i in range(self.word_len):
+            if is_pow_two(i):
+                temp = []
+                print(self.parity_check_pos[i])
+                for check_position in self.parity_check_pos[i]:
+                    temp.append(self.reverse_original_word[check_position - 1])
+                    one_count = temp.count('1')
+                    if self.is_even_parity:
+                        if is_even(one_count):
+                            self.correct_parity_mapping[i] = '0'
+                        else: self.correct_parity_mapping[i] = '1'
+                    else:  # for odd parity
+                        if is_even(one_count):
+                            self.correct_parity_mapping[i] = '1'
+                        else: self.correct_parity_mapping[i] = '0'
+        print(self.correct_parity_mapping)
+
+    def fix_original_word(self):
+        reverse_correct_word = list(self.reverse_original_word)  # copy the value of the reverse of the original word
+        for pos, bit in self.correct_parity_mapping.items():
+            reverse_correct_word[pos-1] = bit
+        self.correct_word = ''.join(reverse_correct_word[::-1])
+        print(self.correct_word)
+
     def generate_hamming_code(self):
-        self.how_many_parity_bits()  # updates self.num_of_parity_bits
+        try:
+            self.how_many_parity_bits()  # updates self.num_of_parity_bits
+        except ValueError as e:
+            print(e)
+            return
         self.num_of_data_bits = self.num_of_parity_bits - self.word_len
-        self.parity_bits_mappings = {
-            pow(2, i): self.word[(pow(2, i) - 1)] for i in range(self.num_of_parity_bits)
+        self.original_parity_mapping = {
+            pow(2, i): self.reverse_original_word[(pow(2, i) - 1)] for i in range(self.num_of_parity_bits)
         }
-        # print(self.parity_bits_mappings)
+        print(self.original_parity_mapping)
         self.get_bit_to_check()  # updates self.parity_check_pos
         print(self.parity_check_pos)
 
 
+def is_pow_two(n: int):
+    return n > 0 and (n & (n - 1)) == 0
 
+def is_even(n):
+    return n % 2 == 0
+
+is_pow_two(48)
 
 n = HammingCode('10101001110', guess=100)
-
 n.generate_hamming_code()
+n.check_bits()
+n.fix_original_word()
+
